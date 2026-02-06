@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skyfire Dogfight</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #05070f;
+      }
+      canvas {
+        display: block;
+      }
+      .ui-layer {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, rgba(20, 40, 80, 0.8), rgba(5, 7, 15, 0.95));
+        color: #f8f9ff;
+        z-index: 5;
+      }
+      .panel {
+        width: min(900px, 92vw);
+        padding: 32px;
+        border-radius: 24px;
+        background: rgba(10, 16, 30, 0.85);
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(80, 130, 255, 0.2);
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 2.4rem;
+        letter-spacing: 0.08em;
+      }
+      .planes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        margin-top: 24px;
+      }
+      .plane-card {
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(20, 30, 55, 0.8);
+        border: 1px solid rgba(110, 160, 255, 0.2);
+        cursor: pointer;
+        transition: transform 0.2s ease, border 0.2s ease;
+      }
+      .plane-card.active {
+        border: 1px solid rgba(120, 220, 255, 0.8);
+        transform: translateY(-4px);
+      }
+      .plane-card h3 {
+        margin: 0 0 8px;
+      }
+      .stat {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+      }
+      .stat span {
+        min-width: 110px;
+      }
+      .bar {
+        flex: 1;
+        height: 8px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        position: relative;
+      }
+      .bar::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        width: var(--value, 50%);
+        background: linear-gradient(90deg, #40d9ff, #5b8dff);
+      }
+      .controls {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .start-btn {
+        padding: 12px 24px;
+        border-radius: 999px;
+        border: none;
+        background: #4ad4ff;
+        color: #030914;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      .hud {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 4;
+        color: #e4f1ff;
+        font-size: 0.95rem;
+        display: none;
+      }
+      .hud .row {
+        margin-bottom: 8px;
+      }
+      .hud-bar {
+        width: 220px;
+        height: 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+      .hud-bar span {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #ff6b6b, #ffa36b);
+        width: 100%;
+      }
+      .blackout {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 6;
+      }
+      .blackout.active {
+        opacity: 1;
+        pointer-events: all;
+      }
+      .hint {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ui-layer" id="start-screen">
+      <div class="panel">
+        <h1>Skyfire Dogfight</h1>
+        <p>Pick your airframe. Each plane has realistic performance limits shown below.</p>
+        <div class="planes" id="plane-options"></div>
+        <div class="controls">
+          <div class="hint">
+            Controls: W/S pitch · A/D roll · Q/E yaw · Space fire · R restart
+          </div>
+          <button class="start-btn" id="start-btn">Launch</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud" id="hud">
+      <div class="row" id="status-text">Wave 1 · Enemies: 0</div>
+      <div class="row">Hull Integrity</div>
+      <div class="hud-bar"><span id="health-bar"></span></div>
+    </div>
+
+    <div class="blackout" id="blackout"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script>
+      const planes = [
+        {
+          id: "fighter",
+          name: "Fighter Jet",
+          description: "High-speed jet with aggressive thrust and limited turning radius.",
+          speed: 1.0,
+          maneuver: 0.75,
+          armor: 0.65,
+          fireRate: 150,
+          color: 0x3fa9ff,
+        },
+        {
+          id: "prop",
+          name: "Propeller Plane",
+          description: "Classic prop with nimble rolls but lower top speed.",
+          speed: 0.65,
+          maneuver: 1.0,
+          armor: 0.55,
+          fireRate: 200,
+          color: 0xffc857,
+        },
+        {
+          id: "interceptor",
+          name: "Night Interceptor",
+          description: "Balanced frame with strong armor but slower response.",
+          speed: 0.8,
+          maneuver: 0.6,
+          armor: 1.0,
+          fireRate: 180,
+          color: 0xa066ff,
+        },
+      ];
+
+      const startScreen = document.getElementById("start-screen");
+      const planeOptions = document.getElementById("plane-options");
+      const startBtn = document.getElementById("start-btn");
+      const hud = document.getElementById("hud");
+      const statusText = document.getElementById("status-text");
+      const healthBar = document.getElementById("health-bar");
+      const blackout = document.getElementById("blackout");
+
+      let selectedPlane = planes[0];
+      let game;
+      let animationId;
+
+      const createPlaneCard = (plane) => {
+        const card = document.createElement("div");
+        card.className = "plane-card";
+        card.dataset.id = plane.id;
+        card.innerHTML = `
+          <h3>${plane.name}</h3>
+          <p class="hint">${plane.description}</p>
+          <div class="stat"><span>Top Speed</span><div class="bar" style="--value: ${plane.speed * 100}%"></div></div>
+          <div class="stat"><span>Maneuver</span><div class="bar" style="--value: ${plane.maneuver * 100}%"></div></div>
+          <div class="stat"><span>Armor</span><div class="bar" style="--value: ${plane.armor * 100}%"></div></div>
+        `;
+        card.addEventListener("click", () => {
+          document.querySelectorAll(".plane-card").forEach((el) => el.classList.remove("active"));
+          card.classList.add("active");
+          selectedPlane = plane;
+        });
+        return card;
+      };
+
+      planes.forEach((plane, index) => {
+        const card = createPlaneCard(plane);
+        if (index === 0) {
+          card.classList.add("active");
+        }
+        planeOptions.appendChild(card);
+      });
+
+      class Game {
+        constructor(planeConfig) {
+          this.scene = new THREE.Scene();
+          this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 800);
+          this.renderer = new THREE.WebGLRenderer({ antialias: true });
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+          document.body.appendChild(this.renderer.domElement);
+
+          this.clock = new THREE.Clock();
+          this.keys = new Set();
+          this.projectiles = [];
+          this.enemyProjectiles = [];
+          this.enemies = [];
+          this.wave = 1;
+          this.isGameOver = false;
+          this.lastShot = 0;
+
+          this.playerStats = {
+            speed: 35 * planeConfig.speed,
+            maneuver: 1.6 * planeConfig.maneuver,
+            armor: 100 * planeConfig.armor,
+            maxArmor: 100 * planeConfig.armor,
+            fireRate: planeConfig.fireRate,
+          };
+
+          this.initScene(planeConfig.color);
+          this.spawnEnemies();
+          this.bindEvents();
+        }
+
+        initScene(color) {
+          this.scene.background = new THREE.Color(0x05070f);
+          const light = new THREE.DirectionalLight(0xffffff, 1.1);
+          light.position.set(10, 20, 15);
+          this.scene.add(light);
+          this.scene.add(new THREE.AmbientLight(0x3f5c8f, 0.5));
+
+          const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(2000, 2000),
+            new THREE.MeshPhongMaterial({ color: 0x070a12, shininess: 10 })
+          );
+          ground.rotation.x = -Math.PI / 2;
+          ground.position.y = -40;
+          this.scene.add(ground);
+
+          this.player = this.createPlaneMesh(color);
+          this.player.position.set(0, 20, 0);
+          this.scene.add(this.player);
+
+          this.camera.position.set(0, 15, 35);
+        }
+
+        createPlaneMesh(color) {
+          const group = new THREE.Group();
+          const body = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 1.2, 10),
+            new THREE.MeshStandardMaterial({ color })
+          );
+          const wing = new THREE.Mesh(
+            new THREE.BoxGeometry(10, 0.3, 2),
+            new THREE.MeshStandardMaterial({ color: color + 0x111111 })
+          );
+          const tail = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1.4, 3),
+            new THREE.MeshStandardMaterial({ color: color + 0x222222 })
+          );
+          tail.position.set(0, 1, -4);
+          wing.position.set(0, -0.1, -1);
+          group.add(body, wing, tail);
+          return group;
+        }
+
+        spawnEnemies() {
+          this.enemies = [];
+          const count = Math.min(3 + this.wave, 10 + this.wave * 2);
+          for (let i = 0; i < count; i += 1) {
+            const enemy = this.createPlaneMesh(0xff5b5b);
+            enemy.position.set((Math.random() - 0.5) * 140, 15 + Math.random() * 30, -120 - i * 20);
+            enemy.userData = { health: 30 + this.wave * 8, fireCooldown: 0 };
+            this.scene.add(enemy);
+            this.enemies.push(enemy);
+          }
+        }
+
+        bindEvents() {
+          this.handleKeyDown = (event) => {
+            this.keys.add(event.key.toLowerCase());
+            if (event.key.toLowerCase() === "r") {
+              this.endGame(true);
+            }
+          };
+          this.handleKeyUp = (event) => {
+            this.keys.delete(event.key.toLowerCase());
+          };
+          window.addEventListener("keydown", this.handleKeyDown);
+          window.addEventListener("keyup", this.handleKeyUp);
+          window.addEventListener("resize", () => {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+          });
+        }
+
+        shoot() {
+          const tracer = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.05, 4, 8),
+            new THREE.MeshBasicMaterial({ color: 0x9ef5ff })
+          );
+          tracer.rotation.x = Math.PI / 2;
+          tracer.position.copy(this.player.position);
+          tracer.quaternion.copy(this.player.quaternion);
+          this.scene.add(tracer);
+          this.projectiles.push({ mesh: tracer, velocity: new THREE.Vector3(0, 0, -120).applyQuaternion(this.player.quaternion) });
+        }
+
+        enemyShoot(enemy) {
+          const tracer = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.06, 4, 8),
+            new THREE.MeshBasicMaterial({ color: 0xff9b9b })
+          );
+          tracer.rotation.x = Math.PI / 2;
+          tracer.position.copy(enemy.position);
+          tracer.quaternion.copy(enemy.quaternion);
+          this.scene.add(tracer);
+          this.enemyProjectiles.push({
+            mesh: tracer,
+            velocity: new THREE.Vector3(0, 0, -90).applyQuaternion(enemy.quaternion),
+          });
+        }
+
+        updatePlayer(delta) {
+          const roll = (this.keys.has("a") ? 1 : 0) - (this.keys.has("d") ? 1 : 0);
+          const pitch = (this.keys.has("w") ? 1 : 0) - (this.keys.has("s") ? 1 : 0);
+          const yaw = (this.keys.has("q") ? 1 : 0) - (this.keys.has("e") ? 1 : 0);
+
+          this.player.rotation.z += roll * this.playerStats.maneuver * delta;
+          this.player.rotation.x += pitch * this.playerStats.maneuver * delta;
+          this.player.rotation.y += yaw * this.playerStats.maneuver * delta;
+
+          const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.player.quaternion);
+          this.player.position.addScaledVector(forward, this.playerStats.speed * delta);
+
+          this.camera.position.lerp(
+            new THREE.Vector3(0, 14, 32).applyQuaternion(this.player.quaternion).add(this.player.position),
+            0.08
+          );
+          this.camera.lookAt(this.player.position);
+
+          if (this.keys.has(" ")) {
+            const now = performance.now();
+            if (now - this.lastShot > this.playerStats.fireRate) {
+              this.shoot();
+              this.lastShot = now;
+            }
+          }
+        }
+
+        updateProjectiles(delta) {
+          const toRemove = [];
+          this.projectiles.forEach((projectile, index) => {
+            projectile.mesh.position.addScaledVector(projectile.velocity, delta);
+            if (projectile.mesh.position.length() > 600) {
+              toRemove.push({ list: this.projectiles, index });
+            }
+          });
+          toRemove.reverse().forEach((item) => {
+            this.scene.remove(item.list[item.index].mesh);
+            item.list.splice(item.index, 1);
+          });
+
+          const enemyRemove = [];
+          this.enemyProjectiles.forEach((projectile, index) => {
+            projectile.mesh.position.addScaledVector(projectile.velocity, delta);
+            if (projectile.mesh.position.length() > 600) {
+              enemyRemove.push(index);
+            }
+          });
+          enemyRemove.reverse().forEach((index) => {
+            this.scene.remove(this.enemyProjectiles[index].mesh);
+            this.enemyProjectiles.splice(index, 1);
+          });
+        }
+
+        updateEnemies(delta) {
+          this.enemies.forEach((enemy) => {
+            const direction = new THREE.Vector3().subVectors(this.player.position, enemy.position).normalize();
+            const targetRotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), direction);
+            enemy.quaternion.slerp(targetRotation, 0.04);
+            enemy.position.addScaledVector(direction, (18 + this.wave * 1.5) * delta);
+
+            enemy.userData.fireCooldown -= delta * 1000;
+            if (enemy.userData.fireCooldown <= 0) {
+              this.enemyShoot(enemy);
+              enemy.userData.fireCooldown = 600 + Math.random() * 600;
+            }
+          });
+        }
+
+        checkCollisions() {
+          const deadEnemies = [];
+          this.projectiles.forEach((projectile) => {
+            this.enemies.forEach((enemy) => {
+              if (projectile.mesh.position.distanceTo(enemy.position) < 3) {
+                enemy.userData.health -= 15;
+                projectile.mesh.position.set(999, 999, 999);
+                if (enemy.userData.health <= 0) {
+                  deadEnemies.push(enemy);
+                }
+              }
+            });
+          });
+          deadEnemies.forEach((enemy) => {
+            this.scene.remove(enemy);
+            this.enemies.splice(this.enemies.indexOf(enemy), 1);
+          });
+
+          this.enemyProjectiles.forEach((projectile) => {
+            if (projectile.mesh.position.distanceTo(this.player.position) < 3.5) {
+              this.playerStats.armor = Math.max(0, this.playerStats.armor - 10);
+              projectile.mesh.position.set(999, 999, 999);
+            }
+          });
+        }
+
+        updateHud() {
+          statusText.textContent = `Wave ${this.wave} · Enemies: ${this.enemies.length}`;
+          const healthPercent = Math.max(0, this.playerStats.armor / this.playerStats.maxArmor);
+          healthBar.style.width = `${healthPercent * 100}%`;
+        }
+
+        nextWave() {
+          this.wave += 1;
+          this.spawnEnemies();
+        }
+
+        crashSequence() {
+          const fall = () => {
+            if (this.player.position.y > -35) {
+              this.player.rotation.x += 0.01;
+              this.player.position.y -= 0.8;
+              this.renderer.render(this.scene, this.camera);
+              requestAnimationFrame(fall);
+            } else {
+              blackout.classList.add("active");
+              setTimeout(() => this.endGame(false), 2000);
+            }
+          };
+          fall();
+        }
+
+        endGame(instant) {
+          this.isGameOver = true;
+          window.removeEventListener("keydown", this.handleKeyDown);
+          window.removeEventListener("keyup", this.handleKeyUp);
+          cancelAnimationFrame(animationId);
+          this.renderer.dispose();
+          this.renderer.domElement.remove();
+          blackout.classList.remove("active");
+          hud.style.display = "none";
+          startScreen.style.display = "flex";
+          if (instant) {
+            return;
+          }
+        }
+
+        update() {
+          if (this.isGameOver) {
+            return;
+          }
+          const delta = this.clock.getDelta();
+          this.updatePlayer(delta);
+          this.updateEnemies(delta);
+          this.updateProjectiles(delta);
+          this.checkCollisions();
+          this.updateHud();
+
+          if (this.playerStats.armor <= 0) {
+            this.isGameOver = true;
+            this.crashSequence();
+            return;
+          }
+
+          if (this.enemies.length === 0) {
+            this.nextWave();
+          }
+
+          this.renderer.render(this.scene, this.camera);
+          animationId = requestAnimationFrame(this.update.bind(this));
+        }
+      }
+
+      const startGame = () => {
+        startScreen.style.display = "none";
+        blackout.classList.remove("active");
+        hud.style.display = "block";
+        game = new Game(selectedPlane);
+        game.update();
+      };
+
+      startBtn.addEventListener("click", startGame);
+    </script>
+  </body>
+</html>
