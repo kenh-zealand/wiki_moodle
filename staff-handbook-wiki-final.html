@@ -1879,21 +1879,21 @@ if (typeof module !== 'undefined' && module.exports) {
                 const content = document.createElement('div');
                 content.className = 'collapsible-content';
                 
-                // Collect all content until next h3
+                // Collect all elements until next h3
+                const elementsToMove = [];
                 let currentElement = h3.nextElementSibling;
-                const elementsToProcess = [];
                 
                 while (currentElement && currentElement.tagName !== 'H3') {
-                    elementsToProcess.push(currentElement);
+                    elementsToMove.push(currentElement);
                     currentElement = currentElement.nextElementSibling;
                 }
                 
-                // Process collected elements
+                // Process and move elements (not clone - we move them)
                 let i = 0;
-                while (i < elementsToProcess.length) {
-                    const element = elementsToProcess[i];
+                while (i < elementsToMove.length) {
+                    const element = elementsToMove[i];
                     
-                    // Check if it's an h4 or if it's a list item with strong (sub-section)
+                    // Check if it's an h4 or a list item with strong (sub-section)
                     const isH4 = element.tagName === 'H4';
                     const isStrongInList = element.tagName === 'UL' && element.querySelector('li > strong');
                     
@@ -1906,35 +1906,43 @@ if (typeof module !== 'undefined' && module.exports) {
                         
                         if (isH4) {
                             h4Header.textContent = element.textContent;
+                            i++; // Skip the h4 element itself
                         } else {
                             // Extract strong text from list
                             const strongElement = element.querySelector('li > strong');
-                            h4Header.textContent = strongElement ? strongElement.textContent : 'Section';
+                            if (strongElement) {
+                                h4Header.textContent = strongElement.textContent;
+                                // Remove the strong element and its parent li from the original
+                                const parentLi = strongElement.closest('li');
+                                if (parentLi) {
+                                    parentLi.remove();
+                                }
+                            }
                         }
                         
                         const h4Content = document.createElement('div');
                         h4Content.className = 'collapsible-content';
                         
-                        // Add current element
-                        if (!isStrongInList) {
-                            // Skip h4 itself, add what follows
-                            i++;
-                        } else {
+                        // Add current element if it's a list with content remaining
+                        if (isStrongInList && element.children.length > 0) {
                             h4Content.appendChild(element.cloneNode(true));
-                            i++;
                         }
                         
-                        // Collect content until next h4/h3 or strong section
-                        while (i < elementsToProcess.length) {
-                            const nextEl = elementsToProcess[i];
-                            const isNextH4 = nextEl.tagName === 'H4';
-                            const isNextStrong = nextEl.tagName === 'UL' && nextEl.querySelector('li > strong');
-                            
-                            if (isNextH4 || isNextStrong) {
-                                break;
+                        // Move following elements until next section
+                        if (isH4) {
+                            while (i < elementsToMove.length) {
+                                const nextEl = elementsToMove[i];
+                                const isNextH4 = nextEl.tagName === 'H4';
+                                const isNextStrong = nextEl.tagName === 'UL' && nextEl.querySelector('li > strong');
+                                
+                                if (isNextH4 || isNextStrong) {
+                                    break;
+                                }
+                                
+                                h4Content.appendChild(nextEl.cloneNode(true));
+                                i++;
                             }
-                            
-                            h4Content.appendChild(nextEl.cloneNode(true));
+                        } else {
                             i++;
                         }
                         
@@ -1942,6 +1950,7 @@ if (typeof module !== 'undefined' && module.exports) {
                         h4Section.appendChild(h4Content);
                         content.appendChild(h4Section);
                     } else {
+                        // Regular content - just append
                         content.appendChild(element.cloneNode(true));
                         i++;
                     }
@@ -1949,6 +1958,13 @@ if (typeof module !== 'undefined' && module.exports) {
                 
                 section.appendChild(header);
                 section.appendChild(content);
+                
+                // Remove all processed elements from temp
+                elementsToMove.forEach(el => {
+                    if (el.parentNode) {
+                        el.remove();
+                    }
+                });
                 
                 // Replace h3 with section
                 h3.parentNode.insertBefore(section, h3);
