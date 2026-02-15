@@ -206,9 +206,14 @@
         }
         
         .collapsible-content.active {
-            max-height: 5000px;
+            max-height: 10000px;
             transition: max-height 0.5s ease-in;
             padding: 15px;
+        }
+        
+        /* Ensure nested content can also expand */
+        .collapsible-level-3 .collapsible-content.active {
+            max-height: 5000px;
         }
         
         .collapsible-level-2 .collapsible-header {
@@ -2017,18 +2022,20 @@ if (typeof module !== 'undefined' && module.exports) {
         // Toggle all sections
         let allExpanded = false;
         function toggleAllSections() {
+            // Get ALL headers and contents (both level 2 and level 3)
             const allHeaders = mainContent.querySelectorAll('.collapsible-header');
             const allContents = mainContent.querySelectorAll('.collapsible-content');
             const toggleBtn = document.getElementById('toggleAllBtn');
-            const toggleIcon = document.getElementById('toggleIcon');
             
             allExpanded = !allExpanded;
             
             if (allExpanded) {
+                // Open ALL sections including nested ones
                 allHeaders.forEach(h => h.classList.add('active'));
                 allContents.forEach(c => c.classList.add('active'));
                 toggleBtn.innerHTML = '<span id="toggleIcon">📁</span> Sammenfold alt';
             } else {
+                // Close ALL sections including nested ones
                 allHeaders.forEach(h => h.classList.remove('active'));
                 allContents.forEach(c => c.classList.remove('active'));
                 toggleBtn.innerHTML = '<span id="toggleIcon">📂</span> Udfold alt';
