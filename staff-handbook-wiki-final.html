@@ -161,6 +161,74 @@
             font-size: 1.1em;
         }
         
+        /* Collapsible sections */
+        .collapsible-section {
+            margin: 15px 0;
+        }
+        
+        .collapsible-header {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px 45px 12px 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .collapsible-header:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        .collapsible-header::after {
+            content: '▼';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.3s;
+            font-size: 0.8em;
+            color: #667eea;
+        }
+        
+        .collapsible-header.active::after {
+            transform: translateY(-50%) rotate(-180deg);
+        }
+        
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0 15px;
+        }
+        
+        .collapsible-content.active {
+            max-height: 5000px;
+            transition: max-height 0.5s ease-in;
+            padding: 15px;
+        }
+        
+        .collapsible-level-2 .collapsible-header {
+            background: #ffffff;
+            border-left: 3px solid #667eea;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+        
+        .collapsible-level-3 .collapsible-header {
+            background: #f8f9fa;
+            border-left: 3px solid #764ba2;
+            font-size: 1em;
+            padding: 10px 40px 10px 20px;
+        }
+        
+        .collapsible-level-3 {
+            margin-left: 15px;
+        }
+        
         .article p {
             margin-bottom: 15px;
             text-align: justify;
@@ -1765,6 +1833,73 @@ if (typeof module !== 'undefined' && module.exports) {
         // Initialize
         let currentCategory = 'all';
         
+        function convertToCollapsible(htmlContent) {
+            // Create a temporary div to parse HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = htmlContent;
+            
+            // Process each h3 and h4 to make them collapsible
+            const h3Elements = temp.querySelectorAll('h3');
+            
+            h3Elements.forEach((h3, index) => {
+                const section = document.createElement('div');
+                section.className = 'collapsible-section collapsible-level-2';
+                
+                const header = document.createElement('div');
+                header.className = 'collapsible-header';
+                header.textContent = h3.textContent;
+                
+                const content = document.createElement('div');
+                content.className = 'collapsible-content';
+                
+                // Collect all content until next h3
+                let nextElement = h3.nextElementSibling;
+                while (nextElement && nextElement.tagName !== 'H3') {
+                    const clone = nextElement.cloneNode(true);
+                    
+                    // If it's an h4, make it collapsible too
+                    if (nextElement.tagName === 'H4') {
+                        const h4Section = document.createElement('div');
+                        h4Section.className = 'collapsible-section collapsible-level-3';
+                        
+                        const h4Header = document.createElement('div');
+                        h4Header.className = 'collapsible-header';
+                        h4Header.textContent = nextElement.textContent;
+                        
+                        const h4Content = document.createElement('div');
+                        h4Content.className = 'collapsible-content';
+                        
+                        // Collect content until next h4 or h3
+                        let h4Next = nextElement.nextElementSibling;
+                        while (h4Next && h4Next.tagName !== 'H3' && h4Next.tagName !== 'H4') {
+                            h4Content.appendChild(h4Next.cloneNode(true));
+                            h4Next = h4Next.nextElementSibling;
+                        }
+                        
+                        h4Section.appendChild(h4Header);
+                        h4Section.appendChild(h4Content);
+                        content.appendChild(h4Section);
+                        
+                        // Skip the elements we already processed
+                        while (nextElement && nextElement !== h4Next) {
+                            nextElement = nextElement.nextElementSibling;
+                        }
+                        continue;
+                    } else {
+                        content.appendChild(clone);
+                    }
+                    
+                    nextElement = nextElement.nextElementSibling;
+                }
+                
+                section.appendChild(header);
+                section.appendChild(content);
+                h3.parentNode.replaceChild(section, h3);
+            });
+            
+            return temp.innerHTML;
+        }
+
         function renderArticles(articles) {
             if (articles.length === 0) {
                 mainContent.innerHTML = `
@@ -1780,12 +1915,26 @@ if (typeof module !== 'undefined' && module.exports) {
             mainContent.innerHTML = articles.map(article => `
                 <article class="article" data-id="${article.id}">
                     <h2>${article.title}</h2>
-                    ${article.content}
+                    ${convertToCollapsible(article.content)}
                     <div class="tags-container">
                         ${article.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
                     </div>
                 </article>
             `).join('');
+            
+            // Add click handlers for collapsible sections
+            attachCollapsibleHandlers();
+        }
+        
+        function attachCollapsibleHandlers() {
+            const headers = mainContent.querySelectorAll('.collapsible-header');
+            headers.forEach(header => {
+                header.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('active');
+                });
+            });
         }
 
         function filterArticles(searchTerm, category) {
