@@ -148,14 +148,15 @@
         
         /* Level 3: Subsection Details */
         .subsection-details {
-            margin: 12px 0;
+            margin: 12px 0 12px 30px; /* Added left margin for indentation */
             border: 1px solid #dee2e6;
+            border-left: 3px solid #667eea; /* Visual indicator for nesting */
             border-radius: 6px;
             background: #fff;
         }
         
         .subsection-details summary {
-            padding: 10px 40px 10px 15px;
+            padding: 10px 40px 10px 20px; /* Increased left padding */
             cursor: pointer;
             background: #f8f9fa;
             border-radius: 5px;
@@ -191,7 +192,7 @@
         }
         
         .subsection-content {
-            padding: 15px;
+            padding: 15px 15px 15px 20px; /* Added extra left padding for nested content */
         }
         
         /* Content Styling */
