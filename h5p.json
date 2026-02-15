@@ -1,0 +1,14 @@
+{
+  "title": "Personalhåndbog - Zealand",
+  "language": "da",
+  "mainLibrary": "H5P.StaffHandbook",
+  "embedTypes": ["div"],
+  "license": "U",
+  "preloadedDependencies": [
+    {
+      "machineName": "H5P.StaffHandbook",
+      "majorVersion": 1,
+      "minorVersion": 0
+    }
+  ]
+}

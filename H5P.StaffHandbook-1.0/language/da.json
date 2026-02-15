@@ -1,0 +1,58 @@
+{
+  "semantics": [
+    {
+      "label": "Personalhåndbog Indhold",
+      "fields": [
+        {
+          "label": "Titel"
+        },
+        {
+          "label": "Undertitel"
+        },
+        {
+          "label": "Søgeplaceholder"
+        },
+        {
+          "label": "Alfabet Sektioner",
+          "entity": "sektion",
+          "field": {
+            "label": "Sektion",
+            "fields": [
+              {
+                "label": "Bogstav",
+                "description": "Alfabetisk bogstav (A, B, C, osv.)"
+              },
+              {
+                "label": "Artikler",
+                "entity": "artikel",
+                "field": {
+                  "label": "Artikel",
+                  "fields": [
+                    {
+                      "label": "Artikel Titel"
+                    },
+                    {
+                      "label": "Undersektioner",
+                      "entity": "undersektion",
+                      "field": {
+                        "label": "Undersektion",
+                        "fields": [
+                          {
+                            "label": "Undersektion Titel"
+                          },
+                          {
+                            "label": "Indhold"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

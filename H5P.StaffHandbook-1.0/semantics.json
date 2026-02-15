@@ -1,0 +1,116 @@
+[
+  {
+    "name": "handbookData",
+    "type": "group",
+    "label": "Staff Handbook Content",
+    "importance": "high",
+    "fields": [
+      {
+        "name": "title",
+        "type": "text",
+        "label": "Title",
+        "default": "Personalhåndbog - Zealand",
+        "importance": "high"
+      },
+      {
+        "name": "subtitle",
+        "type": "text",
+        "label": "Subtitle",
+        "default": "Søgbar videnbase for ansatte",
+        "importance": "medium"
+      },
+      {
+        "name": "searchPlaceholder",
+        "type": "text",
+        "label": "Search Placeholder",
+        "default": "Søg i personalhåndbogen...",
+        "importance": "low"
+      },
+      {
+        "name": "alphabetSections",
+        "type": "list",
+        "label": "Alphabet Sections",
+        "importance": "high",
+        "entity": "section",
+        "min": 1,
+        "field": {
+          "name": "section",
+          "type": "group",
+          "label": "Section",
+          "fields": [
+            {
+              "name": "letter",
+              "type": "text",
+              "label": "Letter",
+              "description": "Alphabet letter (A, B, C, etc.)",
+              "importance": "high"
+            },
+            {
+              "name": "articles",
+              "type": "list",
+              "label": "Articles",
+              "importance": "high",
+              "entity": "article",
+              "min": 1,
+              "field": {
+                "name": "article",
+                "type": "group",
+                "label": "Article",
+                "fields": [
+                  {
+                    "name": "title",
+                    "type": "text",
+                    "label": "Article Title",
+                    "importance": "high"
+                  },
+                  {
+                    "name": "subsections",
+                    "type": "list",
+                    "label": "Subsections",
+                    "importance": "high",
+                    "entity": "subsection",
+                    "min": 0,
+                    "field": {
+                      "name": "subsection",
+                      "type": "group",
+                      "label": "Subsection",
+                      "fields": [
+                        {
+                          "name": "title",
+                          "type": "text",
+                          "label": "Subsection Title",
+                          "importance": "high"
+                        },
+                        {
+                          "name": "content",
+                          "type": "text",
+                          "widget": "html",
+                          "label": "Content",
+                          "importance": "high",
+                          "enterMode": "p",
+                          "tags": [
+                            "strong",
+                            "em",
+                            "u",
+                            "a",
+                            "ul",
+                            "ol",
+                            "li",
+                            "p",
+                            "br",
+                            "h3",
+                            "h4"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+]
