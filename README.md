@@ -17,5 +17,3 @@ TBD
 ## License
 
 TBD
-
-Test fra lokal til sky
