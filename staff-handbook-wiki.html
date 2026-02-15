@@ -1900,7 +1900,18 @@ if (typeof module !== 'undefined' && module.exports) {
                     currentElement = currentElement.nextElementSibling;
                 }
                 
-                // Process and move elements (not clone - we move them)
+                // Find all strong sections in ULs and mark their indices
+                const strongSectionIndices = [];
+                elementsToMove.forEach((el, idx) => {
+                    if (el.tagName === 'UL') {
+                        const strongInLi = el.querySelector('li > strong');
+                        if (strongInLi) {
+                            strongSectionIndices.push(idx);
+                        }
+                    }
+                });
+                
+                // Process elements
                 let i = 0;
                 while (i < elementsToMove.length) {
                     const element = elementsToMove[i];
@@ -1940,21 +1951,21 @@ if (typeof module !== 'undefined' && module.exports) {
                             h4Content.appendChild(element.cloneNode(true));
                         }
                         
-                        // Move following elements until next section
-                        if (isH4) {
-                            while (i < elementsToMove.length) {
-                                const nextEl = elementsToMove[i];
-                                const isNextH4 = nextEl.tagName === 'H4';
-                                const isNextStrong = nextEl.tagName === 'UL' && nextEl.querySelector('li > strong');
-                                
-                                if (isNextH4 || isNextStrong) {
-                                    break;
-                                }
-                                
-                                h4Content.appendChild(nextEl.cloneNode(true));
-                                i++;
+                        i++; // Move past the current strong section
+                        
+                        // Collect ALL following content until next strong section or h4
+                        while (i < elementsToMove.length) {
+                            const nextEl = elementsToMove[i];
+                            const isNextH4 = nextEl.tagName === 'H4';
+                            const isNextStrong = nextEl.tagName === 'UL' && nextEl.querySelector('li > strong');
+                            
+                            // Stop if we hit another section marker
+                            if (isNextH4 || isNextStrong) {
+                                break;
                             }
-                        } else {
+                            
+                            // Add everything else (paragraphs, lists, etc.) to this section
+                            h4Content.appendChild(nextEl.cloneNode(true));
                             i++;
                         }
                         
