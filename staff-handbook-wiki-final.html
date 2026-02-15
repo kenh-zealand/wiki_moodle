@@ -211,9 +211,16 @@
             padding: 15px;
         }
         
-        /* Ensure nested content can also expand */
-        .collapsible-level-3 .collapsible-content.active {
+        /* Ensure nested level 3 content starts collapsed */
+        .collapsible-level-3 > .collapsible-content {
+            max-height: 0;
+            padding: 0 15px;
+        }
+        
+        /* Only expand level 3 when explicitly active */
+        .collapsible-level-3 > .collapsible-content.active {
             max-height: 5000px;
+            padding: 15px;
         }
         
         .collapsible-level-2 .collapsible-header {
@@ -2003,6 +2010,17 @@ if (typeof module !== 'undefined' && module.exports) {
             
             // Add click handlers for collapsible sections
             attachCollapsibleHandlers();
+            
+            // Ensure all sections start collapsed
+            ensureAllCollapsed();
+        }
+        
+        function ensureAllCollapsed() {
+            // Remove any active classes that might have been added
+            const allHeaders = mainContent.querySelectorAll('.collapsible-header');
+            const allContents = mainContent.querySelectorAll('.collapsible-content');
+            allHeaders.forEach(h => h.classList.remove('active'));
+            allContents.forEach(c => c.classList.remove('active'));
         }
         
         function attachCollapsibleHandlers() {
